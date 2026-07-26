@@ -1,0 +1,46 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net472</TargetFramework>
+		<LangVersion>13.0</LangVersion>
+		<ImplicitUsings>disable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<UseWindowsForms>true</UseWindowsForms>
+		<Product>KeePass Plugin</Product>
+		<Title>$(AssemblyName)</Title>
+		<Authors>noah-severyn</Authors>
+		<Description>A utility to download website favicons for KeePass entries.</Description>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<Compile Remove="KeePassPortable\**" />
+		<EmbeddedResource Remove="KeePassPortable\**" />
+		<None Remove="KeePassPortable\**" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Reference Include="KeePass">
+			<HintPath>KeePassPortable\KeePass.exe</HintPath>
+			<Private>False</Private>
+		</Reference>
+	</ItemGroup>
+
+	<ItemGroup>
+		<Folder Include="Properties\" />
+	</ItemGroup>
+
+	<!-- Copy the build DLL file to the portable KeePass instance, then launch the program for testing -->
+	<PropertyGroup>
+		<KeePassDir>C:\Program Files (x86)\KeePass Password Safe 2</KeePassDir>
+	</PropertyGroup>
+
+	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
+		<Copy SourceFiles="$(TargetPath)" DestinationFolder="$(KeePassDir)\Plugins" />
+	</Target>
+	
+	<PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+		<StartAction>Program</StartAction>
+		<StartProgram>$(KeePassDir)\KeePass.exe</StartProgram>
+	</PropertyGroup>
+
+</Project>
