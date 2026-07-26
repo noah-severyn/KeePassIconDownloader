@@ -9,7 +9,7 @@
 		<Product>KeePass Plugin</Product>
 		<Title>$(AssemblyName)</Title>
 		<Authors>noah-severyn</Authors>
-		<Description>A utility to download website favicons for KeePass entries.</Description>
+		<Description>A KeePass plugin to download and manage website favicons for password entries.</Description>
 	</PropertyGroup>
 
 	<ItemGroup>
