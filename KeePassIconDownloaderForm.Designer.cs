@@ -1,10 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Drawing;
+using System.IO;
+using System.Linq;
 using System.Windows.Forms;
 using KeePass.Plugins;
 using KeePassLib;
 using KeePassLib.Collections;
+using KeePassIconDownloader.Data;
 
 namespace KeePassIconDownloader {
     partial class KeePassIconDownloaderForm {
@@ -16,7 +20,10 @@ namespace KeePassIconDownloader {
         private readonly IPluginHost _host;
 
         private PwObjectList<PwEntry> entries = [];
-        private List<PwEntryItem> customEntries = [];
+        private BindingList<PwEntryItem> customEntries = [];
+
+        private ListSortDirection _sortDir = ListSortDirection.Ascending;
+        private int _sortColIdx = -1;
 
         public KeePassIconDownloaderForm(IPluginHost host) {
             InitializeComponent();
@@ -25,6 +32,8 @@ namespace KeePassIconDownloader {
 
         protected override void OnLoad(EventArgs e) {
             base.OnLoad(e);
+            EntryGrid.ColumnHeaderMouseClick += EntryGrid_ColumnHeaderMouseClick;
+            EntryGrid.CellPainting += EntryGrid_CellPainting;
             LoadEntries();
         }
 
@@ -34,33 +43,82 @@ namespace KeePassIconDownloader {
                 return;
             }
 
-            dataGridView1.Rows.Clear();
+            EntryGrid.Rows.Clear();
 
             entries = db.RootGroup.GetEntries(true);
             foreach (PwEntry entry in entries) {
-                customEntries.Add(new PwEntryItem(entry));
-            }
-                
-            dataGridView1.DataSource = customEntries;
-        }
-
-        /// <summary>
-        /// Custom class to display properties of <see cref="PwEntry"/> objects in a list.
-        /// </summary>
-        internal class PwEntryItem {
-            private readonly PwEntry _entry;
-            public PwEntryItem(PwEntry entry) {
-                _entry = entry;
+                customEntries.Add(new PwEntryItem(entry, _host));
             }
 
-            public string Title => _entry.Strings.ReadSafe("Title");
-            public string URL => _entry.Strings.ReadSafe("URL");
-            public string Group => _entry.ParentGroup?.Name ?? string.Empty;
+            EntryGrid.DataSource = customEntries;
 
-            // Keep a reference to the original entry for later use (e.g. downloading icons)
-            [Browsable(false)]
-            public PwEntry Entry => _entry;
+            EntryGrid.Columns["Title"].Width = 200;
+            EntryGrid.Columns["CurrentSize"].Width = 80;
+            EntryGrid.Columns["Group"].Width = 120;
+            EntryGrid.Columns["Url"].Width = 250;
         }
+
+       
+
+
+        
+
+        private void EntryGrid_ColumnHeaderMouseClick(object sender, DataGridViewCellMouseEventArgs e) {
+            _sortDir = (_sortColIdx == e.ColumnIndex && _sortDir == ListSortDirection.Ascending) ? ListSortDirection.Descending : ListSortDirection.Ascending;
+            _sortColIdx = e.ColumnIndex;
+
+            var columnName = EntryGrid.Columns[e.ColumnIndex].DataPropertyName;
+
+            if (columnName == "CurrentSize") {
+                columnName = "CurrentSizeSort";
+            }
+
+            var prop = typeof(PwEntryItem).GetProperty(columnName);
+            if (prop == null) return;
+
+            var sorted = _sortDir == ListSortDirection.Ascending
+                ? customEntries.OrderBy(x => prop.GetValue(x)).ToList()
+                : customEntries.OrderByDescending(x => prop.GetValue(x)).ToList();
+
+            customEntries = new BindingList<PwEntryItem>(sorted);
+            EntryGrid.DataSource = customEntries;
+        }
+
+        //DataGridView doesn't natively support image+text in the same cell, so you need to handle the CellPainting event and draw them manually
+        private void EntryGrid_CellPainting(object sender, DataGridViewCellPaintingEventArgs e) {
+            if (e.ColumnIndex != EntryGrid.Columns["Title"].Index || e.RowIndex < 0) return;
+
+            e.Paint(e.CellBounds, DataGridViewPaintParts.Background | DataGridViewPaintParts.Border);
+
+            var item = customEntries[e.RowIndex];
+            var icon = item.CurrentIcon;
+
+            const int padding = 3;
+            const int iconSize = 16;
+            int textX = e.CellBounds.X + padding;
+
+            if (icon != null) {
+                var iconRect = new Rectangle(
+                    e.CellBounds.X + padding,
+                    e.CellBounds.Y + (e.CellBounds.Height - iconSize) / 2,
+                    iconSize,
+                    iconSize);
+                e.Graphics.DrawImage(icon, iconRect);
+                textX = iconRect.Right + padding;
+            }
+
+            var textRect = new Rectangle(textX, e.CellBounds.Y, e.CellBounds.Right - textX - padding, e.CellBounds.Height);
+
+            var flags = TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis;
+            var textColor = (e.State & DataGridViewElementStates.Selected) != 0
+                ? e.CellStyle.SelectionForeColor
+                : e.CellStyle.ForeColor;
+
+            TextRenderer.DrawText(e.Graphics, item.Title, e.CellStyle.Font, textRect, textColor, flags);
+
+            e.Handled = true;
+        }
+
 
         /// <summary>
         /// Clean up any resources being used.
@@ -81,19 +139,19 @@ namespace KeePassIconDownloader {
         /// </summary>
         private void InitializeComponent() {
             this.components = new System.ComponentModel.Container();
-            this.dataGridView1 = new System.Windows.Forms.DataGridView();
+            this.EntryGrid = new System.Windows.Forms.DataGridView();
             this.pwEntryBindingSource = new System.Windows.Forms.BindingSource(this.components);
-            ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.EntryGrid)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pwEntryBindingSource)).BeginInit();
             this.SuspendLayout();
             // 
-            // dataGridView1
+            // EntryGrid
             // 
-            this.dataGridView1.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            this.dataGridView1.Location = new System.Drawing.Point(0, 0);
-            this.dataGridView1.Name = "dataGridView1";
-            this.dataGridView1.Size = new System.Drawing.Size(1080, 419);
-            this.dataGridView1.TabIndex = 0;
+            this.EntryGrid.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.EntryGrid.Location = new System.Drawing.Point(0, 0);
+            this.EntryGrid.Name = "EntryGrid";
+            this.EntryGrid.Size = new System.Drawing.Size(783, 437);
+            this.EntryGrid.TabIndex = 0;
             // 
             // pwEntryBindingSource
             // 
@@ -103,11 +161,11 @@ namespace KeePassIconDownloader {
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1119, 450);
-            this.Controls.Add(this.dataGridView1);
+            this.ClientSize = new System.Drawing.Size(1029, 682);
+            this.Controls.Add(this.EntryGrid);
             this.Name = "KeePassIconDownloaderForm";
             this.Text = "KeePassIconDownloaderForm";
-            ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.EntryGrid)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pwEntryBindingSource)).EndInit();
             this.ResumeLayout(false);
 
@@ -115,7 +173,7 @@ namespace KeePassIconDownloader {
 
         #endregion
 
-        private System.Windows.Forms.DataGridView dataGridView1;
+        private System.Windows.Forms.DataGridView EntryGrid;
         private BindingSource pwEntryBindingSource;
     }
 }
