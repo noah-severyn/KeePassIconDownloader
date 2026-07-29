@@ -42,11 +42,11 @@ namespace KeePassIconDownloader.Data {
             catch { }
             return null;
         }
+        public bool Selected { get; set; } = false;
+        public string Title { get; private set; }
 
         [Browsable(false)]
         public Image? CurrentIcon { get; private set; }
-
-        public string Title { get; private set; }
         /// <summary>
         /// Defines the sort order for the <see cref="CurrentSize"/> column, equal to the image's width in pixels.
         /// </summary>
