@@ -48,10 +48,10 @@ namespace KeePassIconDownloader {
             var entries = db.RootGroup.GetEntries(true);
             foreach (PwEntry entry in entries) {
                 allEntryItems.Add(new PwEntryItem(entry, _host));
+                filteredEntryItems.Add(new PwEntryItem(entry, _host));
             }
 
             var groups = _host.Database.RootGroup.Groups;
-            //var groups = entries.Select(e => e.ParentGroup).Distinct().OrderBy(g => g.Name).ToList();
             GroupSelection.Items.Clear();
             //All groups except recycle bin are checked by default
             foreach (var group in groups) {
@@ -61,7 +61,7 @@ namespace KeePassIconDownloader {
             GroupSelection.ItemCheck += (s, e) => BeginInvoke((Action) ApplyFilter);
             ApplyFilter();
 
-            EntryGrid.DataSource = allEntryItems;
+            EntryGrid.DataSource = filteredEntryItems;
             EntryGrid.Columns["Selected"].Width = 30;
             EntryGrid.Columns["Selected"].HeaderText = string.Empty;
             EntryGrid.Columns["Title"].Width = 200;
@@ -81,12 +81,12 @@ namespace KeePassIconDownloader {
             if (selectedGroups.Count == GroupSelection.Items.Count) {
                 filteredEntryItems = allEntryItems;
             } else {
+                filteredEntryItems.Clear();
                 foreach (var entry in allEntryItems) {
                     if (selectedGroups.Contains(entry.Group)) {
                         filteredEntryItems.Add(entry);
                     }
                 }
-                //filteredEntryItems = (BindingList<PwEntryItem>) allEntryItems.Where(e => selectedGroups.Contains(e.Group)).ToList();
             }
 
             EntryGrid.DataSource = filteredEntryItems;
@@ -103,9 +103,16 @@ namespace KeePassIconDownloader {
 
             if (columnName == "CurrentSize") {
                 columnName = "CurrentSizeSort";
+            } else if (columnName == "Selected") {
+                bool allSelected = !filteredEntryItems.All(e => e.Selected);
+                foreach (var item in filteredEntryItems) {
+                    item.Selected = allSelected;
+                }
+                EntryGrid.Refresh();
+                return;
             }
 
-            var prop = typeof(PwEntryItem).GetProperty(columnName);
+                var prop = typeof(PwEntryItem).GetProperty(columnName);
             if (prop == null) return;
 
             var sorted = _sortDir == ListSortDirection.Ascending
@@ -122,7 +129,7 @@ namespace KeePassIconDownloader {
 
             e.Paint(e.CellBounds, DataGridViewPaintParts.Background | DataGridViewPaintParts.Border);
 
-            var item = allEntryItems[e.RowIndex];
+            var item = filteredEntryItems[e.RowIndex];
             var icon = item.CurrentIcon;
 
             const int padding = 3;
@@ -174,8 +181,21 @@ namespace KeePassIconDownloader {
             this.EntryGrid = new System.Windows.Forms.DataGridView();
             this.pwEntryBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.GroupSelection = new System.Windows.Forms.CheckedListBox();
+            this.Favicon128Image = new System.Windows.Forms.PictureBox();
+            this.Favicon64Image = new System.Windows.Forms.PictureBox();
+            this.Favicon32Image = new System.Windows.Forms.PictureBox();
+            this.Favicon16Image = new System.Windows.Forms.PictureBox();
+            this.Favicon128Label = new System.Windows.Forms.Label();
+            this.Favicon64Label = new System.Windows.Forms.Label();
+            this.Favicon32Label = new System.Windows.Forms.Label();
+            this.Favicon16Label = new System.Windows.Forms.Label();
+            this.FetchFaviconsButton = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.EntryGrid)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pwEntryBindingSource)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.Favicon128Image)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.Favicon64Image)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.Favicon32Image)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.Favicon16Image)).BeginInit();
             this.SuspendLayout();
             // 
             // EntryGrid
@@ -199,18 +219,116 @@ namespace KeePassIconDownloader {
             this.GroupSelection.Size = new System.Drawing.Size(145, 394);
             this.GroupSelection.TabIndex = 2;
             // 
+            // Favicon128Image
+            // 
+            this.Favicon128Image.Location = new System.Drawing.Point(379, 476);
+            this.Favicon128Image.Name = "Favicon128Image";
+            this.Favicon128Image.Size = new System.Drawing.Size(128, 128);
+            this.Favicon128Image.TabIndex = 3;
+            this.Favicon128Image.TabStop = false;
+            // 
+            // Favicon64Image
+            // 
+            this.Favicon64Image.Location = new System.Drawing.Point(513, 476);
+            this.Favicon64Image.Name = "Favicon64Image";
+            this.Favicon64Image.Size = new System.Drawing.Size(64, 64);
+            this.Favicon64Image.TabIndex = 4;
+            this.Favicon64Image.TabStop = false;
+            // 
+            // Favicon32Image
+            // 
+            this.Favicon32Image.Location = new System.Drawing.Point(583, 476);
+            this.Favicon32Image.Name = "Favicon32Image";
+            this.Favicon32Image.Size = new System.Drawing.Size(32, 32);
+            this.Favicon32Image.TabIndex = 5;
+            this.Favicon32Image.TabStop = false;
+            // 
+            // Favicon16Image
+            // 
+            this.Favicon16Image.Location = new System.Drawing.Point(621, 476);
+            this.Favicon16Image.Name = "Favicon16Image";
+            this.Favicon16Image.Size = new System.Drawing.Size(16, 16);
+            this.Favicon16Image.TabIndex = 6;
+            this.Favicon16Image.TabStop = false;
+            // 
+            // Favicon128Label
+            // 
+            this.Favicon128Label.AutoSize = true;
+            this.Favicon128Label.Location = new System.Drawing.Point(379, 607);
+            this.Favicon128Label.Name = "Favicon128Label";
+            this.Favicon128Label.Size = new System.Drawing.Size(48, 13);
+            this.Favicon128Label.TabIndex = 7;
+            this.Favicon128Label.Text = "128x128";
+            this.Favicon128Label.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // Favicon64Label
+            // 
+            this.Favicon64Label.AutoSize = true;
+            this.Favicon64Label.Location = new System.Drawing.Point(513, 543);
+            this.Favicon64Label.Name = "Favicon64Label";
+            this.Favicon64Label.Size = new System.Drawing.Size(36, 13);
+            this.Favicon64Label.TabIndex = 8;
+            this.Favicon64Label.Text = "64x64";
+            this.Favicon64Label.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // Favicon32Label
+            // 
+            this.Favicon32Label.AutoSize = true;
+            this.Favicon32Label.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.Favicon32Label.Location = new System.Drawing.Point(583, 511);
+            this.Favicon32Label.Name = "Favicon32Label";
+            this.Favicon32Label.Size = new System.Drawing.Size(36, 13);
+            this.Favicon32Label.TabIndex = 9;
+            this.Favicon32Label.Text = "32x32";
+            this.Favicon32Label.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // Favicon16Label
+            // 
+            this.Favicon16Label.AutoSize = true;
+            this.Favicon16Label.Location = new System.Drawing.Point(621, 495);
+            this.Favicon16Label.Name = "Favicon16Label";
+            this.Favicon16Label.Size = new System.Drawing.Size(36, 13);
+            this.Favicon16Label.TabIndex = 10;
+            this.Favicon16Label.Text = "16x16";
+            this.Favicon16Label.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // FetchFaviconsButton
+            // 
+            this.FetchFaviconsButton.Location = new System.Drawing.Point(164, 476);
+            this.FetchFaviconsButton.Name = "FetchFaviconsButton";
+            this.FetchFaviconsButton.Size = new System.Drawing.Size(104, 23);
+            this.FetchFaviconsButton.TabIndex = 11;
+            this.FetchFaviconsButton.Text = "Fetch Favicons";
+            this.FetchFaviconsButton.UseVisualStyleBackColor = true;
+            this.FetchFaviconsButton.Click += new System.EventHandler(this.FetchFaviconsButton_Click);
+            // 
             // KeePassIconDownloaderForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1004, 561);
+            this.ClientSize = new System.Drawing.Size(1004, 665);
+            this.Controls.Add(this.FetchFaviconsButton);
+            this.Controls.Add(this.Favicon16Label);
+            this.Controls.Add(this.Favicon32Label);
+            this.Controls.Add(this.Favicon64Label);
+            this.Controls.Add(this.Favicon128Label);
+            this.Controls.Add(this.Favicon16Image);
+            this.Controls.Add(this.Favicon32Image);
+            this.Controls.Add(this.Favicon64Image);
+            this.Controls.Add(this.Favicon128Image);
             this.Controls.Add(this.GroupSelection);
             this.Controls.Add(this.EntryGrid);
+            this.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Name = "KeePassIconDownloaderForm";
             this.Text = "KeePassIconDownloaderForm";
             ((System.ComponentModel.ISupportInitialize)(this.EntryGrid)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pwEntryBindingSource)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.Favicon128Image)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.Favicon64Image)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.Favicon32Image)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.Favicon16Image)).EndInit();
             this.ResumeLayout(false);
+            this.PerformLayout();
 
         }
 
@@ -219,5 +337,14 @@ namespace KeePassIconDownloader {
         private System.Windows.Forms.DataGridView EntryGrid;
         private BindingSource pwEntryBindingSource;
         private CheckedListBox GroupSelection;
+        private PictureBox Favicon128Image;
+        private PictureBox Favicon64Image;
+        private PictureBox Favicon32Image;
+        private PictureBox Favicon16Image;
+        private Label Favicon128Label;
+        private Label Favicon64Label;
+        private Label Favicon32Label;
+        private Label Favicon16Label;
+        private Button FetchFaviconsButton;
     }
 }
